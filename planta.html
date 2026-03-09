@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planta Baixa: Passarela do Samba</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Estilos base */
+    body { margin: 0; overflow: hidden; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    #drag-container {
+      background-color: #f1f5f9;
+      background-image: url('https://www.transparenttextures.com/patterns/blueprint.png');
+      cursor: grab;
+    }
+    #drag-container:active { cursor: grabbing; }
+    #svg-wrapper {
+      position: absolute;
+      transform-origin: center;
+      transition: transform 0.1s ease-out;
+      width: 2000px;
+      height: 1200px;
+      left: calc(50% - 1000px);
+      top: calc(50% - 600px);
+    }
+
+    /* Estilos específicos para impressão */
+    @media print {
+      @page { size: landscape; margin: 5mm; }
+      body, html { 
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact; 
+        background: white; 
+        margin: 0; 
+        padding: 0;
+        height: 100vh; /* Garante que o corpo tenha apenas a altura de 1 página */
+        overflow: hidden; /* Evita a criação de páginas extras */
+      }
+      .no-print { display: none !important; }
+      
+      #drag-container { 
+        background: white !important; 
+        height: auto !important; 
+        overflow: visible !important; 
+        position: static !important;
+        margin-top: 0 !important; /* Remove o recuo do menu */
+      }
+      
+      #svg-wrapper {
+        transform: none !important;
+        width: 100% !important;
+        height: 85vh !important; /* Limita a altura do SVG para caber na página junto com a legenda */
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      svg {
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      .print-legend {
+        position: static !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: transparent !important;
+        margin-top: 0 !important; /* Remove o recuo superior */
+        margin-bottom: 0 !important;
+        padding: 10px 0 !important;
+      }
+      .print-legend h3 { border: none; margin-bottom: 5px; font-size: 14px; }
+      .print-legend ul { display: flex; flex-wrap: wrap; gap: 15px; font-size: 12px; }
+      .print-legend li { margin-top: 0 !important; }
+    }
+  </style>
+</head>
+<body class="w-full h-screen bg-slate-50 flex flex-col">
+
+  <!-- Header / Toolbar -->
+  <div class="no-print bg-white border-b border-slate-200 p-4 flex justify-between items-center z-10 shadow-sm fixed w-full top-0 left-0">
+    <div>
+      <h1 class="text-xl font-bold text-slate-800">Planta Baixa: Passarela do Samba</h1>
+      <p class="text-sm text-slate-500">Vetorização Profissional Interativa</p>
+    </div>
+    <div class="flex gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
+      <button onclick="window.print()" class="p-2 bg-sky-100 rounded shadow-sm hover:bg-sky-200 text-sky-700 transition font-medium flex items-center gap-2 mr-2" title="Imprimir Planta">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+        <span class="hidden sm:inline">Imprimir</span>
+      </button>
+      <button onclick="handleZoomOut()" class="p-2 bg-white rounded shadow-sm hover:bg-slate-50 text-slate-700 transition" title="Afastar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+      </button>
+      <button onclick="handleReset()" class="p-2 bg-white rounded shadow-sm hover:bg-slate-50 text-slate-700 transition" title="Centralizar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+      </button>
+      <button onclick="handleZoomIn()" class="p-2 bg-white rounded shadow-sm hover:bg-slate-50 text-slate-700 transition" title="Aproximar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Legenda -->
+  <div class="print-legend absolute top-24 left-4 bg-white/90 backdrop-blur p-4 rounded-lg shadow-lg border border-slate-200 z-10 w-48 text-sm" style="margin-top: 80px;">
+    <h3 class="font-bold mb-3 text-slate-800 border-b pb-2">Legenda</h3>
+    <ul class="space-y-2">
+      <li class="flex items-center gap-2"><span class="w-4 h-4 bg-blue-200 border border-blue-400 block rounded"></span> Arquibancada</li>
+      <li class="flex items-center gap-2"><span class="w-4 h-4 bg-yellow-200 border border-yellow-400 block rounded"></span> Camarote</li>
+      <li class="flex items-center gap-2"><span class="w-4 h-4 bg-red-200 border border-red-400 block rounded"></span> Jurados</li>
+      <li class="flex items-center gap-2"><span class="w-4 h-4 bg-orange-200 border border-orange-400 block rounded"></span> Recuo da Bateria</li>
+      <li class="flex items-center gap-2"><span class="w-4 h-4 bg-sky-500 block rounded-sm"></span> Banheiros</li>
+      <li class="flex items-center gap-2"><span class="w-4 h-4 bg-slate-300 block rounded-full"></span> Escolas (Concentração)</li>
+    </ul>
+    <div class="no-print mt-4 pt-3 border-t text-xs text-slate-500 flex items-center gap-2">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="19 9 22 12 19 15"></polyline><polyline points="9 19 12 22 15 19"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg> Clique e arraste para mover
+    </div>
+  </div>
+
+  <!-- Área do Mapa e SVG -->
+  <div id="drag-container" class="flex-1 w-full h-full relative select-none" style="margin-top: 73px;">
+    <div id="svg-wrapper">
+      <!-- O VETOR SVG PURO AQUI -->
+      <svg width="2000" height="1200" viewBox="0 0 2000 1200" class="w-full h-full" style="filter: drop-shadow(0 20px 13px rgb(0 0 0 / 0.03)) drop-shadow(0 8px 5px rgb(0 0 0 / 0.08));">
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e2e8f0" stroke-width="1" />
+          </pattern>
+          <pattern id="checker" width="20" height="20" patternUnits="userSpaceOnUse">
+            <rect width="10" height="10" fill="#334155" />
+            <rect x="10" y="10" width="10" height="10" fill="#334155" />
+            <rect x="10" width="10" height="10" fill="#f8fafc" />
+            <rect y="10" width="10" height="10" fill="#f8fafc" />
+          </pattern>
+          <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b" />
+          </marker>
+          <marker id="arrow-black" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f172a" />
+          </marker>
+        </defs>
+
+        <rect width="2000" height="1200" fill="url(#grid)" rx="16" />
+
+        <g id="estrutura-principal">
+          <!-- PISTA DE ARMAÇÃO / CONCENTRAÇÃO -->
+          <text x="1000" y="120" text-anchor="middle" class="text-xl font-bold fill-slate-700 uppercase" style="letter-spacing: 0.1em;">Pista de Armação / Concentração</text>
+          <line x1="200" y1="140" x2="1800" y2="140" stroke="#94a3b8" stroke-width="2" stroke-dasharray="10,5" />
+          <line x1="200" y1="280" x2="1800" y2="280" stroke="#94a3b8" stroke-width="2" stroke-dasharray="10,5" />
+
+          <!-- Escolas -->
+          <g transform="translate(300, 210)"><circle r="70" fill="#e2e8f0" stroke="#64748b" stroke-width="3" /><text y="-5" text-anchor="middle" class="text-lg font-bold fill-slate-800">ESCOLA</text><text y="20" text-anchor="middle" class="text-2xl font-black fill-slate-800">1</text></g>
+          <g transform="translate(460, 210)"><circle r="70" fill="#e2e8f0" stroke="#64748b" stroke-width="3" /><text y="-5" text-anchor="middle" class="text-lg font-bold fill-slate-800">ESCOLA</text><text y="20" text-anchor="middle" class="text-2xl font-black fill-slate-800">2</text></g>
+          <g transform="translate(620, 210)"><circle r="70" fill="#e2e8f0" stroke="#64748b" stroke-width="3" /><text y="-5" text-anchor="middle" class="text-lg font-bold fill-slate-800">ESCOLA</text><text y="20" text-anchor="middle" class="text-2xl font-black fill-slate-800">3</text></g>
+          <g transform="translate(780, 210)"><circle r="70" fill="#e2e8f0" stroke="#64748b" stroke-width="3" /><text y="-5" text-anchor="middle" class="text-lg font-bold fill-slate-800">ESCOLA</text><text y="20" text-anchor="middle" class="text-2xl font-black fill-slate-800">4</text></g>
+          <g transform="translate(940, 210)"><circle r="70" fill="#e2e8f0" stroke="#64748b" stroke-width="3" /><text y="-5" text-anchor="middle" class="text-lg font-bold fill-slate-800">ESCOLA</text><text y="20" text-anchor="middle" class="text-2xl font-black fill-slate-800">5</text></g>
+          <g transform="translate(1100, 210)"><circle r="70" fill="#e2e8f0" stroke="#64748b" stroke-width="3" /><text y="-5" text-anchor="middle" class="text-lg font-bold fill-slate-800">ESCOLA</text><text y="20" text-anchor="middle" class="text-2xl font-black fill-slate-800">6</text></g>
+          <g transform="translate(1260, 210)"><circle r="70" fill="#e2e8f0" stroke="#64748b" stroke-width="3" /><text y="-5" text-anchor="middle" class="text-lg font-bold fill-slate-800">ESCOLA</text><text y="20" text-anchor="middle" class="text-2xl font-black fill-slate-800">7</text></g>
+
+          <line x1="1400" y1="210" x2="1360" y2="210" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="1480" y1="210" x2="1440" y2="210" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="1560" y1="210" x2="1520" y2="210" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="1640" y1="210" x2="1600" y2="210" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+
+          <path d="M 200 210 Q 150 210 150 260 L 150 450 Q 150 500 190 500 L 210 500" fill="none" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+
+          <!-- PISTA PRINCIPAL -->
+          <rect x="250" y="400" width="1500" height="200" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="4" />
+          <line x1="250" y1="395" x2="1750" y2="395" stroke="#475569" stroke-width="6" stroke-dasharray="15,10" />
+          <line x1="250" y1="605" x2="1750" y2="605" stroke="#475569" stroke-width="6" stroke-dasharray="15,10" />
+
+          <rect x="250" y="400" width="40" height="200" fill="url(#checker)" />
+          <text x="230" y="500" transform="rotate(-90 230,500)" text-anchor="middle" class="text-2xl font-black fill-slate-800" style="letter-spacing: 0.1em;">INÍCIO</text>
+          
+          <rect x="1710" y="400" width="40" height="200" fill="url(#checker)" />
+          <text x="1780" y="500" transform="rotate(-90 1780,500)" text-anchor="middle" class="text-2xl font-black fill-slate-800" style="letter-spacing: 0.1em;">FIM</text>
+
+          <!-- Setas Direção -->
+          <line x1="350" y1="500" x2="380" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="440" y1="500" x2="470" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="530" y1="500" x2="560" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="620" y1="500" x2="650" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="710" y1="500" x2="740" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="800" y1="500" x2="830" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="890" y1="500" x2="920" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="980" y1="500" x2="1010" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="1070" y1="500" x2="1100" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="1160" y1="500" x2="1190" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="1250" y1="500" x2="1280" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="1340" y1="500" x2="1370" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="1430" y1="500" x2="1460" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="1520" y1="500" x2="1550" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+          <line x1="1610" y1="500" x2="1640" y2="500" stroke="#64748b" stroke-width="4" marker-end="url(#arrow)" />
+
+          <!-- ESTRUTURAS SUPERIORES -->
+          <g transform="translate(320, 320)">
+            <rect width="350" height="65" fill="#bfdbfe" stroke="#3b82f6" stroke-width="2" rx="4" />
+            <text x="175" y="35" text-anchor="middle" class="font-bold fill-blue-900">ARQUIBANCADA - 50 METROS</text>
+            <text x="175" y="-20" text-anchor="middle" class="text-xs font-bold fill-sky-700 uppercase">Banheiros</text>
+            <rect x="100" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="118" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="136" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="154" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="172" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="190" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="208" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="226" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/>
+          </g>
+
+          <g transform="translate(710, 335)">
+            <rect width="80" height="50" fill="#fecaca" stroke="#ef4444" stroke-width="2" rx="4" />
+            <text x="40" y="30" text-anchor="middle" class="font-bold fill-red-900 text-sm">JURADOS</text>
+            <text x="40" y="-15" text-anchor="middle" class="text-xs font-bold fill-sky-700 uppercase">Banh.</text>
+            <rect x="10" y="-5" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="28" y="-5" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="46" y="-5" width="12" height="12" fill="#0ea5e9" rx="2"/>
+          </g>
+
+          <g transform="translate(820, 290)">
+            <path d="M 0 105 L 0 0 L 220 0 L 220 105" fill="#fef08a" stroke="#ca8a04" stroke-width="6" stroke-dasharray="10,5" />
+            <text x="110" y="40" text-anchor="middle" class="font-bold fill-yellow-900">RECUO</text>
+            <text x="110" y="65" text-anchor="middle" class="font-bold fill-yellow-900">DA BATERIA</text>
+            <path d="M 60 120 Q 60 90 90 90" fill="none" stroke="#0f172a" stroke-width="3" marker-end="url(#arrow-black)" />
+            <path d="M 130 90 Q 160 90 160 120" fill="none" stroke="#0f172a" stroke-width="3" marker-end="url(#arrow-black)" />
+          </g>
+
+          <g transform="translate(1070, 335)">
+            <rect width="80" height="50" fill="#fecaca" stroke="#ef4444" stroke-width="2" rx="4" />
+            <text x="40" y="30" text-anchor="middle" class="font-bold fill-red-900 text-sm">JURADOS</text>
+            <text x="40" y="-15" text-anchor="middle" class="text-xs font-bold fill-sky-700 uppercase">Banh.</text>
+            <rect x="10" y="-5" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="28" y="-5" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="46" y="-5" width="12" height="12" fill="#0ea5e9" rx="2"/>
+          </g>
+
+          <g transform="translate(1190, 320)">
+            <rect width="350" height="65" fill="#bfdbfe" stroke="#3b82f6" stroke-width="2" rx="4" />
+            <text x="175" y="35" text-anchor="middle" class="font-bold fill-blue-900">ARQUIBANCADA - 50 METROS</text>
+            <text x="175" y="-20" text-anchor="middle" class="text-xs font-bold fill-sky-700 uppercase">Banheiros</text>
+            <rect x="100" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="118" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="136" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="154" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="172" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="190" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="208" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="226" y="-10" width="12" height="12" fill="#0ea5e9" rx="2"/>
+          </g>
+
+          <!-- ESTRUTURAS INFERIORES -->
+          <g transform="translate(280, 620)">
+            <rect width="350" height="70" fill="#bfdbfe" stroke="#3b82f6" stroke-width="2" rx="4" />
+            <text x="175" y="40" text-anchor="middle" class="font-bold fill-blue-900">ARQUIBANCADA - 50 METROS</text>
+            <text x="175" y="105" text-anchor="middle" class="text-xs font-bold fill-sky-700 uppercase">Banheiros</text>
+            <rect x="130" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="148" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="166" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="184" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="202" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/>
+          </g>
+
+          <g transform="translate(680, 620)">
+            <rect width="300" height="70" fill="#fef08a" stroke="#eab308" stroke-width="2" rx="4" />
+            <text x="150" y="40" text-anchor="middle" class="font-bold fill-yellow-900 text-lg">CAMAROTE</text>
+            <text x="150" y="105" text-anchor="middle" class="text-xs font-bold fill-sky-700 uppercase">Banheiros</text>
+            <rect x="120" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="138" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="156" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="174" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/>
+          </g>
+
+          <g transform="translate(1040, 620)">
+            <rect width="350" height="70" fill="#bfdbfe" stroke="#3b82f6" stroke-width="2" rx="4" />
+            <text x="175" y="40" text-anchor="middle" class="font-bold fill-blue-900">ARQUIBANCADA - 50 METROS</text>
+            <text x="175" y="105" text-anchor="middle" class="text-xs font-bold fill-sky-700 uppercase">Banheiros</text>
+            <rect x="130" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="148" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="166" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="184" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="202" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/><rect x="220" y="80" width="12" height="12" fill="#0ea5e9" rx="2"/>
+          </g>
+
+          <!-- ACESSOS E PERÍMETRO -->
+          <path d="M 50 1000 L 1900 1000 L 1900 100" fill="none" stroke="#475569" stroke-width="3" />
+          
+          <g transform="translate(1000, 980)">
+            <rect x="-40" y="0" width="80" height="40" fill="#cbd5e1" stroke="#475569" stroke-width="3" />
+            <text x="0" y="65" text-anchor="middle" class="font-bold fill-slate-800 text-sm">PORTÃO</text>
+            <text x="0" y="85" text-anchor="middle" class="font-bold fill-slate-800 text-sm">PÚBLICO</text>
+            <line x1="-20" y1="50" x2="-20" y2="-20" stroke="#059669" stroke-width="3" marker-end="url(#arrow)" />
+            <line x1="20" y1="-20" x2="20" y2="50" stroke="#dc2626" stroke-width="3" marker-end="url(#arrow)" />
+          </g>
+
+          <g transform="translate(1700, 980)">
+            <rect x="-40" y="0" width="80" height="40" fill="#cbd5e1" stroke="#475569" stroke-width="3" />
+            <text x="0" y="65" text-anchor="middle" class="font-bold fill-slate-800 text-sm">PORTÃO ENTRADA</text>
+            <text x="0" y="85" text-anchor="middle" class="font-bold fill-slate-800 text-sm">ESTRUTURAS</text>
+            <line x1="-20" y1="50" x2="-20" y2="-20" stroke="#059669" stroke-width="3" marker-end="url(#arrow)" />
+            <line x1="20" y1="-20" x2="20" y2="50" stroke="#dc2626" stroke-width="3" marker-end="url(#arrow)" />
+          </g>
+
+          <g class="fill-slate-600 font-bold text-sm">
+            <text x="180" y="340">GRADES</text>
+            <line x1="190" y1="350" x2="240" y2="390" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
+            <text x="1600" y="340">GRADES</text>
+            <line x1="1610" y1="350" x2="1570" y2="390" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
+            <text x="160" y="660">GRADES</text>
+            <line x1="170" y1="650" x2="220" y2="610" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
+            <text x="640" y="680">GRADES</text>
+            <line x1="650" y1="670" x2="660" y2="610" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
+            <text x="1000" y="680">GRADES</text>
+            <line x1="1010" y1="670" x2="1020" y2="610" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
+            <text x="1420" y="660">GRADES</text>
+            <line x1="1430" y1="650" x2="1380" y2="610" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" />
+          </g>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <script>
+    // Lógica Javascript para Interatividade (Zoom e Pan)
+    let scale = 0.8;
+    let position = { x: 0, y: 0 };
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+
+    const container = document.getElementById('drag-container');
+    const wrapper = document.getElementById('svg-wrapper');
+
+    function updateTransform() {
+      wrapper.style.transform = `translate(${position.x}px, ${position.y}px) scale(${scale})`;
+    }
+
+    function handleZoomIn() {
+      scale = Math.min(scale + 0.2, 3);
+      updateTransform();
+    }
+
+    function handleZoomOut() {
+      scale = Math.max(scale - 0.2, 0.3);
+      updateTransform();
+    }
+
+    function handleReset() {
+      scale = 0.8;
+      position = { x: 0, y: 0 };
+      updateTransform();
+    }
+
+    container.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragStart.x = e.clientX - position.x;
+      dragStart.y = e.clientY - position.y;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        position.x = e.clientX - dragStart.x;
+        position.y = e.clientY - dragStart.y;
+        updateTransform();
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    // Zoom com a roda (scroll) do mouse
+    container.addEventListener('wheel', (e) => {
+      e.preventDefault(); // Evita que a página inteira role
+      const zoomSpeed = 0.1;
+      
+      if (e.deltaY < 0) {
+        // Rolou para cima: Aproximar
+        scale = Math.min(scale + zoomSpeed, 3);
+      } else {
+        // Rolou para baixo: Afastar
+        scale = Math.max(scale - zoomSpeed, 0.3);
+      }
+      updateTransform();
+    }, { passive: false });
+
+    // Iniciar na posição correta
+    updateTransform();
+  </script>
+</body>
+</html>
